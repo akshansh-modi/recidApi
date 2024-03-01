@@ -25,7 +25,7 @@ def get_age_category(age):
 
 @flask_app.route("/")
 def Home():
-    return render_template("index.html")
+    return "recidApi"
 
 
 @flask_app.route("/predictApi", methods=["POST"])
