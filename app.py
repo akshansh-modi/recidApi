@@ -6,7 +6,7 @@ import pickle
 
 # import streamlit
 # Create flask app
-flask_app = Flask(__name__)
+app = Flask(__name__)
 # Get the absolute path to the model file
 script_directory = os.path.dirname(os.path.abspath(__file__))
 model_file_path = os.path.join(script_directory, "random_forest_classifier_model.pkl")
@@ -23,12 +23,12 @@ def get_age_category(age):
         return "Greater than 45"
 
 
-@flask_app.route("/")
+@app.route("/")
 def Home():
     return "recidApi"
 
 
-@flask_app.route("/predictApi", methods=["POST"])
+@app.route("/predictApi", methods=["POST"])
 def predictApi():
     try:
 
@@ -91,7 +91,7 @@ def predictApi():
         return jsonify(error_message)
 
 
-# @flask_app.route("/predict", methods=["POST"])
+# @app.route("/predict", methods=["POST"])
 # def predict():
 #     try:
 #         # Get integer inputs
@@ -162,4 +162,4 @@ def predictApi():
 
 
 if __name__ == "__main__":
-    flask_app.run(debug=True)
+    app.run(debug=True)
