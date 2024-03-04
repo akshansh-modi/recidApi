@@ -2,11 +2,13 @@ import numpy as np
 import os
 from flask import Flask, request, render_template, jsonify
 import pickle
-
-
+from flask_cors import CORS
+import json
+import pandas as pd
 # import streamlit
 # Create flask app
 app = Flask(__name__)
+CORS(app)
 # Get the absolute path to the model file
 script_directory = os.path.dirname(os.path.abspath(__file__))
 model_file_path = os.path.join(script_directory, "random_forest_classifier_model.pkl")
@@ -27,21 +29,25 @@ def get_age_category(age):
 def Home():
     return "recidApi"
 
-
 @app.route("/predictApi", methods=["POST"])
 def predictApi():
     try:
+        # Log incoming request data
+        app.logger.info("Received request data:\n\n\n\n %s", request.data)
 
-        age = int(request.form["age"])
-        priors_count = int(request.form["priors_count"])
-        v_decile_score = int(request.form["v_decile_score"])
-        decile_score = int(request.form["decile_score"])
-        length_of_stay = int(request.form["length_of_stay"])
+        # Parse JSON data
+        request_data = json.loads(request.data)
 
-        c_charge_degree = request.form["c_charge_degree"]
-        race = request.form["race"]
+        age = int(request_data["age"])
+        priors_count = int(request_data["priors_count"])
+        v_decile_score = int(request_data["v_decile_score"])
+        decile_score = int(request_data["decile_score"])
+        length_of_stay = int(request_data["length_of_stay"])
+
+        c_charge_degree = request_data["c_charge_degree"]
+        race = request_data["race"]
         age_cat = get_age_category(age)
-        sex = request.form["sex"]
+        sex = request_data["sex"]
 
         c_charge_degree_enc = {"F": 0, "M": 1}
         race_enc = {
@@ -59,37 +65,46 @@ def predictApi():
         }
         sex_enc = {"Female": 0, "Male": 1}
 
-        c_charge_degree_enc_val = c_charge_degree_enc[c_charge_degree]
-        race_enc_val = race_enc[race]
-        age_cat_enc_val = age_cat_enc[age_cat]
-        sex_enc_val = sex_enc[sex]
-
+        c_charge_degree_enc_val = c_charge_degree_enc.get(c_charge_degree)
+        race_enc_val = race_enc.get(race)
+        age_cat_enc_val = age_cat_enc.get(age_cat)
+        sex_enc_val= sex_enc.get(sex)
+# 
         features = np.array(
             [
                 [
                     age,
-                    priors_count,
-                    v_decile_score,
-                    decile_score,
-                    length_of_stay,
                     c_charge_degree_enc_val,
                     race_enc_val,
                     age_cat_enc_val,
                     sex_enc_val,
+                    priors_count,
+                    v_decile_score,
+                    decile_score,
+                    length_of_stay,
                 ]
             ]
         )
+        app.logger.info("Features: %s", features)
+        feature_names = ["age", "c_charge_degree", "race", "age_cat", "sex", "priors_count", "v_decile_score", "decile_score", "length_of_stay"]
 
-        prediction = model.predict(features)
+# Create DataFrame
+        features_df = pd.DataFrame(features, columns=feature_names)
+        
+        prediction = model.predict_proba(features_df)
 
         prediction_json = prediction.tolist()
         return jsonify(prediction_json)
 
     except (KeyError, ValueError, IndexError) as e:
-
-        error_message = "Please provide valid input for all fields."
-        return jsonify(error_message)
-
+        # Log error and return error message
+        app.logger.error("Error processing request: %s", e)
+        error_message = "Please provide valid input for all fields"
+        return jsonify({
+            "error_message": error_message,
+            "request_form_data": request.form,
+            "error": str(e)
+        }), 400 
 
 # @app.route("/predict", methods=["POST"])
 # def predict():
